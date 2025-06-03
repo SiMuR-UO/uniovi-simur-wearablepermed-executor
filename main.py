@@ -79,7 +79,9 @@ def filter_files_export(args):
                 files_to_export.append((root, file))
             
 
-    return files_to_export
+    files_to_export_ordered = sorted(files_to_export)
+
+    return files_to_export_ordered
 
 def execute_container(args, files_to_export):
     client = docker.from_env()
@@ -97,7 +99,8 @@ def execute_container(args, files_to_export):
 
         try:
             # Run the container
-            output = client.containers.run(
+            container = client.containers.run(
+                name=os.path.splitext(file[1])[0],
                 image=args.docker_image,
                 command=[
                     'python', 'converter.py',
@@ -105,11 +108,19 @@ def execute_container(args, files_to_export):
                     'data/' + file[1]
                 ],
                 volumes=volumes,
-                remove=True,
-                working_dir='/app'
+                #remove=True,
+                working_dir='/app',
+                detach=True,
+                stdout=True,
+                stderr=True,
             )
 
-            _logger.info(output.decode())            
+            # Stream logs live
+            for line in container.logs(stream=True):
+                print(line.decode(), end='')
+
+            # Optionally remove the container
+            container.remove()          
         except docker.errors.ContainerError as e:
             _logger.error("Container failed:", e.stderr.decode())
         except docker.errors.ImageNotFound:
