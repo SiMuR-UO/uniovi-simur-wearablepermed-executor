@@ -135,7 +135,7 @@ def execute_container(args, files_to_export):
         except Exception as e:
             _logger.error("Unexpected error:", str(e))
         
-_logger.info("Starting docker executor ...")
+_logger.info("Starting executor python module ...")
 
 args = parse_args(sys.argv[1:])
 setup_logging(args.loglevel)
@@ -146,4 +146,4 @@ files_to_export = filter_files_export(args)
 _logger.info("Execute Docker collector python module ...")
 execute_container(args, files_to_export)
 
-_logger.info("Ending docker executor ...")
+_logger.info("Ending executor python module ...")
