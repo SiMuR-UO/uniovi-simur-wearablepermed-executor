@@ -25,19 +25,26 @@ def parse_args(args):
     parser = argparse.ArgumentParser(description="BIN to CSV Converter")
 
     parser.add_argument(
+        "-rd",
+        "--root-data-folder",
+        required=True,
+        dest="root_data_folder",
+        help="Root Participant data folder",
+    )
+    parser.add_argument(
         "-di",
         "--docker-image",
         required=True,
         dest="docker_image",
-        help="Docker image",
-    )
+        help="Docker image with Python modules implemented",
+    )    
     parser.add_argument(
-        "-rb",
-        "--root-bin-folder",
+        "-md",
+        "--python-module",
         required=True,
-        dest="root_bin_folder",
-        help="Root BIN files folder",
-    )          
+        dest="python_module",
+        help="Python module to be execute",
+    )             
     parser.add_argument(
         "-v",
         "--verbose",
@@ -69,7 +76,7 @@ def setup_logging(loglevel):
     )
 
 def filter_files_export(args):
-    for root, dirs, files in os.walk(args.root_bin_folder):
+    for root, dirs, files in os.walk(args.root_data_folder):
         for file in files:
             # get participant name           
             _, ext = os.path.splitext(file)         
@@ -103,7 +110,7 @@ def execute_container(args, files_to_export):
                 name=os.path.splitext(file[1])[0],
                 image=args.docker_image,
                 command=[
-                    'python', 'converter.py',
+                    'python', args.python_module,
                     '--bin-matrix-PMP',
                     'data/' + file[1]
                 ],
@@ -136,7 +143,7 @@ setup_logging(args.loglevel)
 _logger.info("Filering files to be export ...")
 files_to_export = filter_files_export(args)
 
-_logger.info("Execute Docker export ...")
+_logger.info("Execute Docker collector python module ...")
 execute_container(args, files_to_export)
 
 _logger.info("Ending docker executor ...")
