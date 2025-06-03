@@ -108,8 +108,8 @@ def execute_container(args, files_to_export):
                     'data/' + file[1]
                 ],
                 volumes=volumes,
-                #remove=True,
                 working_dir='/app',
+                #remove=True,                
                 detach=True,
                 stdout=True,
                 stderr=True,
