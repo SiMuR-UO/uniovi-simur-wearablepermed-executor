@@ -4,6 +4,8 @@ import os
 import argparse
 import logging
 import docker
+from collections import defaultdict
+import unicodedata
 
 __author__ = "Miguel Angel Salinas Gancedo"
 __copyright__ = "Simur"
@@ -23,6 +25,9 @@ class ML_Sensor(Enum):
     PI = 'thigh'
     M = 'wrist'
     C = 'hip'
+
+def to_ascii(text):
+    return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode()
 
 def parse_ml_model(value):
     try:
@@ -213,11 +218,11 @@ def filter_aggregator_files(args):
 
     return files_to_export_ordered
 
-def execute_container(args, files_to_export):
+def execute_container_by_converter(args, input_files):
     client = docker.from_env()
 
-    for file in files_to_export:
-        _logger.info('Export BIN file: ' + file[1])
+    for file in input_files:
+        _logger.info('Executing file: ' + file[1])
 
         # Define the volume mapping
         volumes = {
@@ -227,22 +232,143 @@ def execute_container(args, files_to_export):
             }
         }
 
+        # Define the container command
+        commands = [
+            'python', args.python_module,
+            '--bin-matrix-PMP', 'data/' + file[1]
+        ]
+
+        # Run the container from volume and command
+        try:
+            container = client.containers.run(
+                name = os.path.splitext(file[1])[0],
+                image = args.docker_image,
+                user = '1000:1000',
+                command = commands,
+                volumes = volumes,
+                working_dir = '/app',         
+                detach = True,
+                stdout = True,
+                stderr = True,
+            )
+
+            # Stream logs live
+            for line in container.logs(stream=True):
+                print(line.decode(), end='')
+
+            # Optionally remove the container and volumes attached
+            container.remove(v=True, force=True)          
+        except docker.errors.ContainerError as e:
+            _logger.error("Container failed:", e.stderr.decode())
+        except docker.errors.ImageNotFound:
+            _logger.error("Image not found.")
+        except Exception as e:
+            _logger.error("Unexpected error:", str(e))
+
+def execute_container_by_windowed(args, input_files):
+    client = docker.from_env()
+
+    # group input files in participant groups from activity excel and csv input files
+    participants = defaultdict(list)
+
+    for participant, filename in input_files:
+        participants[participant].append(filename)
+
+    # create the container from participant groups
+    for participant_path, files in participants.items():
+        _logger.info('Executing participant: ' + participant_path)
+
+        # Identify the .xlsx file
+        activity_files = [f for f in files if f.endswith('.xlsx')]
+        csv_files = [f for f in files if f.endswith('.csv')]
+
+        if len(activity_files) == 1 and len(csv_files) > 0:
+            activity_file = activity_files[0]
+
+            for csv_file in csv_files:
+                print(f"{activity_file} with {csv_file}")
+
+                # get name and extension from input csv file
+                name, extension = os.path.splitext(csv_file)
+
+                # Define the volume mapping
+                volumes = {
+                    participant_path: {
+                        'bind': '/app/data',
+                        'mode': 'rw'
+                    }
+                }
+
+                # Define the container command        
+                commands = [
+                    'python', args.python_module,
+                    '--csv-matrix-PMP', 'data/' + csv_file,
+                    '--activity-PMP', 'data/' + activity_file,
+                    '--export-folder-name', 'data/' + name + '.npz',            
+                ]
+
+                if args.make_feature_extractions == True:
+                    commands.append('--make-feature-extractions')
+
+                # Run the container from volume and command
+                try:
+                    container = client.containers.run(
+                        name = to_ascii(name),
+                        image = args.docker_image,
+                        user = '1000:1000',
+                        command = commands,
+                        volumes = volumes,
+                        working_dir = '/app',
+                        detach = True,
+                        stdout = True,
+                        stderr = True,
+                    )
+
+                    # Stream logs live
+                    for line in container.logs(stream=True):
+                        print(line.decode(), end='')
+
+                    # Optionally remove the container and volumne attached
+                    container.remove(v=True, force=True)
+                except docker.errors.ContainerError as e:
+                    _logger.error("Container failed:", e.stderr.decode())
+                except docker.errors.ImageNotFound:
+                    _logger.error("Image not found.")
+                except Exception as e:
+                    _logger.error("Unexpected error:", str(e))
+
+def execute_container_by_agregator(args, input_files):
+    client = docker.from_env()
+
+    for file in input_files:
+        _logger.info('Executing file: ' + file[1])
+
+        # Define the volume mapping
+        volumes = {
+            file[0]: {
+                'bind': '/app/data',
+                'mode': 'rw'
+            }
+        }
+
+        # Define the container command
+        commands = [
+            'python', args.python_module,
+            '--bin-matrix-PMP', 'data/' + file[1]
+        ]
+
         try:
             # Run the container
             container = client.containers.run(
-                name=os.path.splitext(file[1])[0],
-                image=args.docker_image,
-                command=[
-                    'python', args.python_module,
-                    '--bin-matrix-PMP',
-                    'data/' + file[1]
-                ],
-                volumes=volumes,
-                working_dir='/app',
-                #remove=True,                
-                detach=True,
-                stdout=True,
-                stderr=True,
+                name = os.path.splitext(file[1])[0],
+                image = args.docker_image,
+                user = '1000:1000',
+                command = commands,
+                volumes = volumes,
+                working_dir = '/app',            
+                detach = True,
+                stdout = True,
+                stderr = True,
             )
 
             # Stream logs live
@@ -250,30 +376,39 @@ def execute_container(args, files_to_export):
                 print(line.decode(), end='')
 
             # Optionally remove the container
-            container.remove()          
+            container.remove(v=True, force=True)
         except docker.errors.ContainerError as e:
             _logger.error("Container failed:", e.stderr.decode())
         except docker.errors.ImageNotFound:
             _logger.error("Image not found.")
         except Exception as e:
             _logger.error("Unexpected error:", str(e))
-        
+
 _logger.info("Starting executor python module ...")
 
 args = parse_args(sys.argv[1:])
 setup_logging(args.loglevel)
 
-_logger.info("Filtering files to be used ...")
 if args.python_module == "converter.py":
-    files_to_export = filter_conveter_files(args)
+    _logger.info("Filtering files ...")
+    input_files = filter_conveter_files(args)
+
+    _logger.info("Execute Docker Python module ...")
+    execute_container_by_converter(args, input_files)    
 elif args.python_module == "windowed.py":
-    files_to_export = filter_windowed_files(args)
+    _logger.info("Filtering files ...")
+    input_files = filter_windowed_files(args)
+
+    _logger.info("Execute Docker Python module ...")
+    execute_container_by_windowed(args, input_files) 
 elif args.python_module == "aggregator.py":
-    files_to_export = filter_aggregator_files(args)
+    _logger.info("Filtering files ...")
+    input_files = filter_aggregator_files(args)
+
+    _logger.info("Execute Docker Python module ...")
+    execute_container_by_agregator(args, input_files) 
+
 else:
     raise Exception("Python module not implemented")   
-
-_logger.info("Execute Docker collector python module ...")
-execute_container(args, files_to_export)
 
 _logger.info("Ending executor python module ...")
