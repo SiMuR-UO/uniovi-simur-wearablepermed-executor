@@ -29,50 +29,6 @@ class ML_Sensor(Enum):
 def to_ascii(text):
     return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode()
 
-def parse_ml_model(value):
-    try:
-        """Parse a comma-separated list of CML Models lor values into a list of ML_Sensor enums."""
-        values = [v.strip() for v in value.split(',') if v.strip()]
-        result = []
-        invalid = []
-        for v in values:
-            try:
-                result.append(ML_Model(v))
-            except ValueError:
-                invalid.append(v)
-        if invalid:
-            valid = ', '.join(c.value for c in ML_Model)
-            raise argparse.ArgumentTypeError(
-                f"Invalid color(s): {', '.join(invalid)}. "
-                f"Choose from: {valid}"
-            )
-        return result
-    except ValueError:
-        valid = ', '.join(ml_model.value for ml_model in ML_Model)
-        raise argparse.ArgumentTypeError(f"Invalid ML Model '{value}'. Choose from: {valid}")
-    
-def parse_ml_sensor(value):
-    try:
-        """Parse a comma-separated list of CML Models lor values into a list of ML_Sensor enums."""
-        values = [v.strip() for v in value.split(',') if v.strip()]
-        result = []
-        invalid = []
-        for v in values:
-            try:
-                result.append(ML_Sensor(v))
-            except ValueError:
-                invalid.append(v)
-        if invalid:
-            valid = ', '.join(c.value for c in ML_Sensor)
-            raise argparse.ArgumentTypeError(
-                f"Invalid color(s): {', '.join(invalid)}. "
-                f"Choose from: {valid}"
-            )
-        return result
-    except ValueError:
-        valid = ', '.join(ml_model.value for ml_model in ML_Sensor)
-        raise argparse.ArgumentTypeError(f"Invalid ML Model '{value}'. Choose from: {valid}")
-   
 def parse_args(args):
     """Parse command line parameters
 
@@ -121,23 +77,19 @@ def parse_args(args):
     parser.add_argument(
         "-ml-models",
         "--ml-models",
-        type=parse_ml_model,
-        nargs='+',
         dest="ml_models",
         help=f"Available ML models: {[c.value for c in ML_Model]}."
     )
     parser.add_argument(
         "-ml-sensors",
         "--ml-sensors",
-        type=parse_ml_sensor,
-        nargs='+',
         dest="ml_sensors",
         help=f"Available ML sensors: {[c.value for c in ML_Sensor]}."
     ) 
     parser.add_argument(
         "-participants-file",
         "--participants-file",
-        type=argparse.FileType("r"),
+        dest="participants_file",
         help="Choose the dataset participant text file"
     )
     parser.add_argument(
@@ -211,7 +163,7 @@ def filter_aggregator_files(args):
             _, ext = os.path.splitext(file)         
 
             # get only files for windowed step
-            if ext == ".npz" and "_all.npz" not in file:
+            if ext == ".npz" and "_tot_" not in file:
                 files_to_export.append((root, file))
 
     files_to_export_ordered = sorted(files_to_export)
@@ -224,7 +176,7 @@ def execute_container_by_converter(args, input_files):
     for file in input_files:
         _logger.info('Executing file: ' + file[1])
 
-        # Define the volume mapping
+        # Define the container volume mapping
         volumes = {
             file[0]: {
                 'bind': '/app/data',
@@ -233,7 +185,7 @@ def execute_container_by_converter(args, input_files):
         }
 
         # Define the container command
-        commands = [
+        command = [
             'python', args.python_module,
             '--bin-matrix-PMP', 'data/' + file[1]
         ]
@@ -244,7 +196,7 @@ def execute_container_by_converter(args, input_files):
                 name = os.path.splitext(file[1])[0],
                 image = args.docker_image,
                 user = '1000:1000',
-                command = commands,
+                command = command,
                 volumes = volumes,
                 working_dir = '/app',         
                 detach = True,
@@ -252,11 +204,11 @@ def execute_container_by_converter(args, input_files):
                 stderr = True,
             )
 
-            # Stream logs live
+            # stream logs live
             for line in container.logs(stream=True):
-                print(line.decode(), end='')
+                _logger.info(line.decode(), end='')
 
-            # Optionally remove the container and volumes attached
+            # remove the container and volume attached
             container.remove(v=True, force=True)          
         except docker.errors.ContainerError as e:
             _logger.error("Container failed:", e.stderr.decode())
@@ -286,12 +238,12 @@ def execute_container_by_windowed(args, input_files):
             activity_file = activity_files[0]
 
             for csv_file in csv_files:
-                print(f"{activity_file} with {csv_file}")
+                _logger.info(f"{activity_file} with {csv_file}")
 
                 # get name and extension from input csv file
                 name, extension = os.path.splitext(csv_file)
 
-                # Define the volume mapping
+                # Define the container volume mapping
                 volumes = {
                     participant_path: {
                         'bind': '/app/data',
@@ -300,7 +252,7 @@ def execute_container_by_windowed(args, input_files):
                 }
 
                 # Define the container command        
-                commands = [
+                command = [
                     'python', args.python_module,
                     '--csv-matrix-PMP', 'data/' + csv_file,
                     '--activity-PMP', 'data/' + activity_file,
@@ -308,7 +260,7 @@ def execute_container_by_windowed(args, input_files):
                 ]
 
                 if args.make_feature_extractions == True:
-                    commands.append('--make-feature-extractions')
+                    command.append('--make-feature-extractions')
 
                 # Run the container from volume and command
                 try:
@@ -316,7 +268,7 @@ def execute_container_by_windowed(args, input_files):
                         name = to_ascii(name),
                         image = args.docker_image,
                         user = '1000:1000',
-                        command = commands,
+                        command = command,
                         volumes = volumes,
                         working_dir = '/app',
                         detach = True,
@@ -324,11 +276,11 @@ def execute_container_by_windowed(args, input_files):
                         stderr = True,
                     )
 
-                    # Stream logs live
+                    # stream logs live
                     for line in container.logs(stream=True):
-                        print(line.decode(), end='')
+                        _logger.info(line.decode(), end='')
 
-                    # Optionally remove the container and volumne attached
+                    # remove the container and volume attached
                     container.remove(v=True, force=True)
                 except docker.errors.ContainerError as e:
                     _logger.error("Container failed:", e.stderr.decode())
@@ -340,49 +292,83 @@ def execute_container_by_windowed(args, input_files):
 def execute_container_by_agregator(args, input_files):
     client = docker.from_env()
 
-    for file in input_files:
-        _logger.info('Executing file: ' + file[1])
+    # group input files in participant groups from activity excel and csv input files
+    participants = defaultdict(list)
 
-        # Define the volume mapping
-        volumes = {
-            file[0]: {
-                'bind': '/app/data',
-                'mode': 'rw'
+    for participant, filename in input_files:
+        participants[participant].append(filename)
+
+    # create the container from participant groups
+    for participant_data_path, files in participants.items():
+        _logger.info('Executing participant: ' + participant_data_path)
+
+        # Identify the .npz file
+        npz_files = [f for f in files if f.endswith('.npz')]
+
+        # get container volume paths
+        dataset_folder_path = args.dataset_folder
+        participant_file_path = os.path.join(os.getcwd(), 'participants.txt')        
+        case_id_folder_path = args.case_id_folder
+
+        for npz_file in npz_files:
+            _logger.info(f"aggregating {npz_file} file")
+
+            # get name and extension from input npz file
+            name, extension = os.path.splitext(npz_file)
+
+            # Define the container volume mapping
+            volumes = {
+                dataset_folder_path: {
+                    'bind': '/app/data/input',
+                    'mode': 'rw'
+                },
+                participant_file_path: {
+                    'bind': '/app/participants.txt',
+                    'mode': 'rw'
+                },
+                case_id_folder_path: {
+                    'bind': '/app/data/output',
+                    'mode': 'rw'
+                }
             }
-        }
 
-        # Define the container command
-        commands = [
-            'python', args.python_module,
-            '--bin-matrix-PMP', 'data/' + file[1]
-        ]
+            # Define the container command
+            command = [
+                'python', args.python_module,
+                '--case-id', args.case_id,
+                '--ml-models', args.ml_models,
+                '--dataset-folder', 'data/input',
+                '--participants-file', 'participants.txt',
+                '--ml-sensors', args.ml_sensors,
+                '--case-id-folder', 'data/output'
+            ]
 
-        try:
-            # Run the container
-            container = client.containers.run(
-                name = os.path.splitext(file[1])[0],
-                image = args.docker_image,
-                user = '1000:1000',
-                command = commands,
-                volumes = volumes,
-                working_dir = '/app',            
-                detach = True,
-                stdout = True,
-                stderr = True,
-            )
+            try:
+                # Run the container
+                container = client.containers.run(
+                    name = to_ascii(name),
+                    image = args.docker_image,
+                    user = '1000:1000',
+                    command = command,
+                    volumes = volumes,
+                    working_dir = '/app',            
+                    detach = True,
+                    stdout = True,
+                    stderr = True,
+                )
 
-            # Stream logs live
-            for line in container.logs(stream=True):
-                print(line.decode(), end='')
-
-            # Optionally remove the container
-            container.remove(v=True, force=True)
-        except docker.errors.ContainerError as e:
-            _logger.error("Container failed:", e.stderr.decode())
-        except docker.errors.ImageNotFound:
-            _logger.error("Image not found.")
-        except Exception as e:
-            _logger.error("Unexpected error:", str(e))
+                # Stream logs live
+                for line in container.logs(stream=True):
+                    _logger.info(line.decode(), end='')
+            except docker.errors.ContainerError as e:
+                _logger.error("Container failed:", e.stderr.decode())
+            except docker.errors.ImageNotFound:
+                _logger.error("Image not found.")
+            except Exception as e:
+                _logger.error("Unexpected error:", str(e))
+            finally:
+                # remove the container and volume attached                
+                container.remove(v=True, force=True)
 
 _logger.info("Starting executor python module ...")
 
