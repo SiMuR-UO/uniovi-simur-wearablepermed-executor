@@ -156,20 +156,6 @@ def filter_windowed_files(args):
 
     return files_to_export_ordered
 
-def filter_aggregator_files(args):
-    for root, dirs, files in os.walk(args.dataset_folder):
-        for file in files:
-            # get files tokens
-            _, ext = os.path.splitext(file)         
-
-            # get only files for windowed step
-            if ext == ".npz" and "_tot_" not in file:
-                files_to_export.append((root, file))
-
-    files_to_export_ordered = sorted(files_to_export)
-
-    return files_to_export_ordered
-
 def execute_container_by_converter(args, input_files):
     client = docker.from_env()
 
@@ -289,86 +275,67 @@ def execute_container_by_windowed(args, input_files):
                 except Exception as e:
                     _logger.error("Unexpected error:", str(e))
 
-def execute_container_by_agregator(args, input_files):
+def execute_container_by_agregator(args):
     client = docker.from_env()
 
-    # group input files in participant groups from activity excel and csv input files
-    participants = defaultdict(list)
+    # get container volume paths
+    dataset_folder_path = args.dataset_folder
+    participant_file_path = os.path.join(os.getcwd(), 'participants.txt')        
+    case_id_folder_path = args.case_id_folder
 
-    for participant, filename in input_files:
-        participants[participant].append(filename)
+    # Define the container volume mapping
+    volumes = {
+        dataset_folder_path: {
+            'bind': '/app/data/input',
+            'mode': 'rw'
+        },
+        participant_file_path: {
+            'bind': '/app/participants.txt',
+            'mode': 'rw'
+        },
+        case_id_folder_path: {
+            'bind': '/app/data/output',
+            'mode': 'rw'
+        }
+    }
 
-    # create the container from participant groups
-    for participant_data_path, files in participants.items():
-        _logger.info('Executing participant: ' + participant_data_path)
+    # Define the container command
+    command = [
+        'python', args.python_module,
+        '--case-id', args.case_id,
+        '--ml-models', args.ml_models,
+        '--dataset-folder', 'data/input',
+        '--participants-file', 'participants.txt',
+        '--ml-sensors', args.ml_sensors,
+        '--case-id-folder', 'data/output'
+    ]
 
-        # Identify the .npz file
-        npz_files = [f for f in files if f.endswith('.npz')]
+    try:
+        # Run the container
+        container = client.containers.run(
+            name = 'aggregator',
+            image = args.docker_image,
+            user = '1000:1000',
+            command = command,
+            volumes = volumes,
+            working_dir = '/app',            
+            detach = True,
+            stdout = True,
+            stderr = True,
+        )
 
-        # get container volume paths
-        dataset_folder_path = args.dataset_folder
-        participant_file_path = os.path.join(os.getcwd(), 'participants.txt')        
-        case_id_folder_path = args.case_id_folder
-
-        for npz_file in npz_files:
-            _logger.info(f"aggregating {npz_file} file")
-
-            # get name and extension from input npz file
-            name, extension = os.path.splitext(npz_file)
-
-            # Define the container volume mapping
-            volumes = {
-                dataset_folder_path: {
-                    'bind': '/app/data/input',
-                    'mode': 'rw'
-                },
-                participant_file_path: {
-                    'bind': '/app/participants.txt',
-                    'mode': 'rw'
-                },
-                case_id_folder_path: {
-                    'bind': '/app/data/output',
-                    'mode': 'rw'
-                }
-            }
-
-            # Define the container command
-            command = [
-                'python', args.python_module,
-                '--case-id', args.case_id,
-                '--ml-models', args.ml_models,
-                '--dataset-folder', 'data/input',
-                '--participants-file', 'participants.txt',
-                '--ml-sensors', args.ml_sensors,
-                '--case-id-folder', 'data/output'
-            ]
-
-            try:
-                # Run the container
-                container = client.containers.run(
-                    name = to_ascii(name),
-                    image = args.docker_image,
-                    user = '1000:1000',
-                    command = command,
-                    volumes = volumes,
-                    working_dir = '/app',            
-                    detach = True,
-                    stdout = True,
-                    stderr = True,
-                )
-
-                # Stream logs live
-                for line in container.logs(stream=True):
-                    _logger.info(line.decode(), end='')
-            except docker.errors.ContainerError as e:
-                _logger.error("Container failed:", e.stderr.decode())
-            except docker.errors.ImageNotFound:
-                _logger.error("Image not found.")
-            except Exception as e:
-                _logger.error("Unexpected error:", str(e))
-            finally:
-                # remove the container and volume attached                
-                container.remove(v=True, force=True)
+        # Stream logs live
+        for line in container.logs(stream=True):
+            _logger.info(line.decode(), end='')
+    except docker.errors.ContainerError as e:
+        _logger.error("Container failed:", e.stderr.decode())
+    except docker.errors.ImageNotFound:
+        _logger.error("Image not found.")
+    except Exception as e:
+        _logger.error("Unexpected error:", str(e))
+    finally:
+        # remove the container and volume attached                
+        container.remove(v=True, force=True)
 
 _logger.info("Starting executor python module ...")
 
@@ -388,11 +355,8 @@ elif args.python_module == "windowed.py":
     _logger.info("Execute Docker Python module ...")
     execute_container_by_windowed(args, input_files) 
 elif args.python_module == "aggregator.py":
-    _logger.info("Filtering files ...")
-    input_files = filter_aggregator_files(args)
-
     _logger.info("Execute Docker Python module ...")
-    execute_container_by_agregator(args, input_files) 
+    execute_container_by_agregator(args) 
 
 else:
     raise Exception("Python module not implemented")   
