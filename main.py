@@ -1,11 +1,11 @@
-from enum import Enum
 import sys
 import os
 import argparse
 import logging
-import docker
+from enum import Enum
 from collections import defaultdict
 import unicodedata
+import docker
 
 __author__ = "Miguel Angel Salinas Gancedo"
 __copyright__ = "Simur"
@@ -367,9 +367,9 @@ def execute_container_by_trainer(args):
     command = [
         'python', args.python_module,
         '--case-id', args.case_id,
-        '--case-id-folder', 'data/output',        
+        '--dataset-folder', 'data/input',        
         '--ml-models', args.ml_models,
-        '--dataset-folder', 'data/input',
+        '--case-id-folder', 'data/output',        
         "--training-percent", args.training_percent    
     ]
 
@@ -450,10 +450,10 @@ def execute_container_by_tester(args):
         # remove the container and volume attached                
         container.remove(v=True, force=True)
 
-_logger.info("Starting executor python module ...")
-
 args = parse_args(sys.argv[1:])
 setup_logging(args.loglevel)
+
+_logger.info("Starting executor python module ...")
 
 if args.python_module == "converter.py":
     _logger.info("Filtering files ...")
@@ -476,7 +476,6 @@ elif args.python_module == "trainer.py":
 elif args.python_module == "tester.py":
     _logger.info("Execute Docker Python tester module ...")
     execute_container_by_tester(args) 
-
 else:
     raise Exception("Python module not implemented")   
 
