@@ -13,11 +13,11 @@
               // STEP01: converter module
               //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
               //"--python-module", "converter.py",
-              //"--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
+              //"--dataset-folder", "/home/simur/temp/samples/input",
               // STEP02: windowed module
               //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
               //"--python-module", "windowed.py",
-              //"--dataset-folder", "/home/simur/temp/samples",
+              //"--dataset-folder", "/home/simur/temp/samples/input",
               //"--make-feature-extractions", 
               // STEP03: aggregator module
               "--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
