@@ -97,7 +97,14 @@ def parse_args(args):
         "--case-id-folder",
         dest="case_id_folder",
         help="Choose the case id root folder."
-    )                                 
+    )  
+    parser.add_argument(
+        "-training-percent",
+        "--training-percent",        
+        dest="training_percent",
+        default="70",        
+        help="Choose the training percent."
+    )                                   
     parser.add_argument(
         "-v",
         "--verbose",
@@ -337,6 +344,112 @@ def execute_container_by_agregator(args):
         # remove the container and volume attached                
         container.remove(v=True, force=True)
 
+def execute_container_by_trainer(args):
+    client = docker.from_env()
+
+    # get container volume paths
+    dataset_folder_path = args.dataset_folder    
+    case_id_folder_path = args.case_id_folder
+
+    # Define the container volume mapping
+    volumes = {
+        dataset_folder_path: {
+            'bind': '/app/data/input',
+            'mode': 'rw'
+        },
+        case_id_folder_path: {
+            'bind': '/app/data/output',
+            'mode': 'rw'
+        }
+    }
+
+    # Define the container command
+    command = [
+        'python', args.python_module,
+        '--case-id', args.case_id,
+        '--case-id-folder', 'data/output',        
+        '--ml-models', args.ml_models,
+        '--dataset-folder', 'data/input',
+        "--training-percent", args.training_percent    
+    ]
+
+    try:
+        # Run the container
+        container = client.containers.run(
+            name = 'trainer',
+            image = args.docker_image,
+            user = '1000:1000',
+            command = command,
+            volumes = volumes,
+            working_dir = '/app',            
+            detach = True,
+            stdout = True,
+            stderr = True,
+        )
+
+        # Stream logs live
+        for line in container.logs(stream=True):
+            _logger.info(line.decode(), end='')
+    except docker.errors.ContainerError as e:
+        _logger.error("Container failed:", e.stderr.decode())
+    except docker.errors.ImageNotFound:
+        _logger.error("Image not found.")
+    except Exception as e:
+        _logger.error("Unexpected error:", str(e))
+    finally:
+        # remove the container and volume attached                
+        container.remove(v=True, force=True)
+
+def execute_container_by_tester(args):
+    client = docker.from_env()
+
+    # get container volume paths    
+    case_id_folder_path = args.case_id_folder
+
+    # Define the container volume mapping
+    volumes = {
+        case_id_folder_path: {
+            'bind': '/app/data/output',
+            'mode': 'rw'
+        }
+    }
+
+    # Define the container command
+    command = [
+        'python', args.python_module,
+        '--case-id', args.case_id,
+        '--case-id-folder', 'data/output',        
+        '--ml-models', args.ml_models,
+        "--training-percent", args.training_percent    
+    ]
+
+    try:
+        # Run the container
+        container = client.containers.run(
+            name = 'tester',
+            image = args.docker_image,
+            user = '1000:1000',
+            command = command,
+            volumes = volumes,
+            working_dir = '/app',            
+            detach = True,
+            stdout = True,
+            stderr = True,
+        )
+
+        # Stream logs live
+        for line in container.logs(stream=True):
+            _logger.info(line.decode(), end='')
+    except docker.errors.ContainerError as e:
+        _logger.error("Container failed:", e.stderr.decode())
+    except docker.errors.ImageNotFound:
+        _logger.error("Image not found.")
+    except Exception as e:
+        _logger.error("Unexpected error:", str(e))
+    finally:
+        # remove the container and volume attached                
+        container.remove(v=True, force=True)
+
 _logger.info("Starting executor python module ...")
 
 args = parse_args(sys.argv[1:])
@@ -346,17 +459,23 @@ if args.python_module == "converter.py":
     _logger.info("Filtering files ...")
     input_files = filter_conveter_files(args)
 
-    _logger.info("Execute Docker Python module ...")
+    _logger.info("Execute Docker Python converter module ...")
     execute_container_by_converter(args, input_files)    
 elif args.python_module == "windowed.py":
     _logger.info("Filtering files ...")
     input_files = filter_windowed_files(args)
 
-    _logger.info("Execute Docker Python module ...")
+    _logger.info("Execute Docker Python windowed module ...")
     execute_container_by_windowed(args, input_files) 
 elif args.python_module == "aggregator.py":
-    _logger.info("Execute Docker Python module ...")
+    _logger.info("Execute Docker Python aggregator module ...")
     execute_container_by_agregator(args) 
+elif args.python_module == "trainer.py":
+    _logger.info("Execute Docker Python trainer module ...")
+    execute_container_by_trainer(args) 
+elif args.python_module == "tester.py":
+    _logger.info("Execute Docker Python tester module ...")
+    execute_container_by_tester(args) 
 
 else:
     raise Exception("Python module not implemented")   
