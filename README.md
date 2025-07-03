@@ -1,13 +1,10 @@
 # Description
 
-Python module to:
-
-- **Parse** recursively a folder with telemetry (accelerometer) BIN files to CSV format files using the accelerometers Python propietary module.
-- **Generate datasets and graphical analysis** from IMUs CSV telemetry (accelerometer) and activity register files from several participants to be used to train machine learning models.
+This is a python module to execute the WearablePermed HMC and ML containers recursivelly in all Participants folders dataset to pretrain, train and validate macine learning models.
 
 ## Prepare environment
 
-To activate virtual enviroment
+Activate virtual enviroment and install dependencies:
 ```
 $ python3 -m venv .venv
 $ source .venv/bin/activate
