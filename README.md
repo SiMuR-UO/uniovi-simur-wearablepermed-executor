@@ -24,32 +24,90 @@ $ deact
 
     - **docker-image**: is the docker image to be used for parse BIN IMUs file to CSV files.
     - **python-module**: is the python module inside the docker image to be executed.
-    - **root-data-folder**: the root data folder where the executor will parse these BIN files from each participant.
+    - **data-folder**: the root data folder where the executor will parse these BIN files from each participant.
 
     To convert all BIN files for all participants root data folder `/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input` using the docker image `ofertoio/uniovi-simur-wearablepermed-hmc:1.0.0` execute this command:
 
+    Using python command:
     ```
-    python3 main.py \
+    $ python3 main.py \
     -vv \
     --docker-image ofertoio/uniovi-simur-wearablepermed-hmc:1.0.0 \
     --python-module converter.py \
     --data-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input
     ```
 
-2. To run the python module to **generate datasets** from previous csv files and activity registers for each participant we have these arguments:
+    Using docker image:
+
+    ```
+    $ docker run \
+    --rm \
+    -v /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data:/app/data \
+    uniovi-simur-wearablepermed-hmc:1.0.0 \
+    python converter.py \
+    --data-folder data/input
+    ```
+
+2. To run the python module to **windowed datasets** from previous csv files and activity registers for each participant we have these arguments:
 
     - **docker-image**: is the docker image to be used for aggregate BIN and activity registers.
     - **python-module**: is the python module inside the docker image to be executed.
-    - **root-data-folder**: the root data folder where the aggregator will generage the final datasets to be used to train our machine learning models: convolutional and reinforced machine learning. By default only the dataset to train convolutional machine learning models will be created.
+    - **dataset-folder**: the root data folder where the windowed will generate the final datasets to be used to aggregate for our machine learning models: convolutional and reinforced machine learning. By default only the dataset to train convolutional machine learning models will be created.
     - **make-feature-extractions**: this optional argument permit create also the feature extractions dataset to train reinforced machine learning models.
 
     To generate datasets for all participants root data folder `/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input` using the docker image `ofertoio/uniovi-simur-wearablepermed-hmc:1.0.0` to create datasets to train convolutional and reinforced machine learning, execute this command:
 
+    Using python command:
     ```
-    python3 main.py \
-    -vv \
+    $ python3 main.py \
     --docker-image ofertoio/uniovi-simur-wearablepermed-hmc:1.0.0 \
     --python-module windowed.py \
-    --bin-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input
+    --dataset-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input
     --make-feature-extractions
+    ```
+
+
+    Using docker image:
+
+    ```
+    $ docker run \
+    --rm \
+    -v /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data:/app/data \
+    uniovi-simur-wearablepermed-hmc:1.0.0 \
+    python windowed.py \
+    --dataset-folder data/input \
+    --make-feature-extractions
+    ```
+
+3. To run the python module to **aggregator** from previous datasets to be aggregated for final trianing:
+
+    Using python command:
+
+    ```
+    $ python3 main.py \
+    --docker-image uniovi-simur-wearablepermed-hmc:1.0.0 \
+    --python-module aggregator.py \
+    --case-id case_05 \
+    --ml-models CAPTURE24 \
+    --dataset-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input \
+    --participants-file participants.txt \
+    --ml-sensors thigh,wrist \
+    --case-id-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/output
+    ```
+
+    Using docker image:
+
+    ```
+    $ docker run \
+    --rm \
+    -v /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data:/app/data \
+    -v /home/simur/git/uniovi-simur-wearablepermed-executor/participants.txt:/app/participants.txt \
+    uniovi-simur-wearablepermed-hmc:1.0.0 \
+    python aggregator.py \
+    --case-id case_05 \
+    --ml-models CAPTURE24 \
+    --dataset-folder data/input \
+    --participants-file participants.txt \
+    --ml-sensors thigh,wrist \
+    --case-id-folder data/output
     ```
