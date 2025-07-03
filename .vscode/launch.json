@@ -18,7 +18,8 @@
               //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
               //"--python-module", "windowed.py",
               //"--dataset-folder", "/home/simur/temp/samples/input",
-              //"--make-feature-extractions", 
+              //"--make-feature-extractions",
+              
               // STEP03: aggregator module
               //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
               //"--python-module", "aggregator.py",
@@ -28,6 +29,7 @@
               //"--participants-file", "participants.txt",
               //"--ml-sensors", "thigh,wrist",              
               //"--case-id-folder", "/home/simur/temp/samples/output",
+
               // STEP04: trainer module
               //"--docker-image", "uniovi-simur-wearablepermed-ml:1.0.0",
               //"--python-module", "trainer.py",              
@@ -36,6 +38,7 @@
               //"--ml-models","ESANN,RandomForest",
               //"--dataset-folder", "/home/simur/temp/samples/input",
               //"--training-percent", "70"
+
               // STEP05: tester module 
               "--case-id", "case_06",
               "--case-id-folder", "/home/simur/temp/samples/output",
