@@ -29,18 +29,18 @@
               //"--ml-sensors", "thigh,wrist",              
               //"--case-id-folder", "/home/simur/temp/samples/output",
               // STEP04: trainer module
-              "--docker-image", "uniovi-simur-wearablepermed-ml:1.0.0",
-              "--python-module", "trainer.py",              
-              "--case-id", "case_sample",
-              "--case-id-folder", "/home/simur/temp/samples/output",            
-              "--ml-models","ESANN,RandomForest",
-              "--dataset-folder", "/home/simur/temp/samples/input",
-              "--training-percent", "70"
+              //"--docker-image", "uniovi-simur-wearablepermed-ml:1.0.0",
+              //"--python-module", "trainer.py",              
+              //"--case-id", "case_sample",
+              //"--case-id-folder", "/home/simur/temp/samples/output",            
+              //"--ml-models","ESANN,RandomForest",
+              //"--dataset-folder", "/home/simur/temp/samples/input",
+              //"--training-percent", "70"
               // STEP05: tester module 
-              //"--case-id", "case_01",
-              //"--case-id-folder", "/home/simur/temp/samples/output",
-              //"--model-id", "ESANN",
-              //"--training-percent", "70"                                       
+              "--case-id", "case_06",
+              "--case-id-folder", "/home/simur/temp/samples/output",
+              "--model-id", "RandomForest",
+              "--training-percent", "70"                                       
             ],            
             "program": "${file}",
             "console": "integratedTerminal"

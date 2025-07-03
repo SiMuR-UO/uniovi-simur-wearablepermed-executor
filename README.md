@@ -111,3 +111,29 @@ $ deact
     --ml-sensors thigh,wrist \
     --case-id-folder data/output
     ```
+
+    5. To run the python module to **tester** from previous ML:
+
+    Using python command:
+
+    ```
+    $ python3 main.py \
+    --docker-image uniovi-simur-wearablepermed-hmc:1.0.0 \
+    --python-module tester.py \
+    --case-id case_06 \
+    --ml-models RandomForest \
+    --case-id-folder /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/output \        
+    ```
+
+    Using docker image:
+
+    ```
+    $ docker run \
+    --rm \
+    -v /mnt/nvme1n2/git/uniovi-simur-wearablepermed-data:/app/data \
+    uniovi-simur-wearablepermed-ml:1.0.0 \
+    python tester.py \
+    --case-id case_06 \
+    --ml-models RandomForest \
+    --case-id-folder data/output    
+    ```
