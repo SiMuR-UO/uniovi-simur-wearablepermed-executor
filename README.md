@@ -16,7 +16,8 @@ $ pip install -r requirements.txt
 
 To deactivate virtual enviroment
 ```
-$ deact
+$ deactivate
+```
 
  ## Python Module Description
 
@@ -66,7 +67,6 @@ $ deact
     --make-feature-extractions
     ```
 
-
     Using docker image:
 
     ```
@@ -112,7 +112,7 @@ $ deact
     --case-id-folder data/output
     ```
 
-    4. To run the python module to **trainer** from previous Datasets:
+4. To run the python module to **trainer** from previous Datasets:
 
     Using python command:
 
@@ -142,7 +142,7 @@ $ deact
     --training-percent 70  
     ```
 
-    5. To run the python module to **tester** from previous ML:
+5. To run the python module to **tester** from previous ML:
 
     Using python command:
 
