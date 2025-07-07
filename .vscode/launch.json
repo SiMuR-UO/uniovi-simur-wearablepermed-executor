@@ -9,47 +9,41 @@
             "type": "debugpy",
             "request": "launch",
             "args": [                
-                "-v",
                 // STEP01: converter module
                 //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
                 //"--python-module", "converter.py",
                 //"--dataset-folder", "/home/simur/temp/samples/input",
+
                 // STEP02: windowed module
                 //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
                 //"--python-module", "windowed.py",
-                //"--dataset-folder", "/home/simur/temp/samples/input",
-                //"--make-feature-extractions",
-              
-                // STEP02: Windowed
-                //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
-                //"--python-module", "windowed.py",                
                 //"--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
                 //"--make-feature-extractions",
-
+              
                 // STEP03: aggregator module
-                //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
-                //"--python-module", "aggregator.py",
-                //"--case-id", "case_sample",
-                //"--ml-models","ESANN,RandomForest",
-                //"--dataset-folder", "/home/simur/temp/samples/input",              
-                //"--participants-file", "participants.txt",
-                //"--ml-sensors", "thigh,wrist",              
-                //"--case-id-folder", "/home/simur/temp/samples/output",
+                "--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
+                "--python-module", "aggregator.py",
+                "--case-id", "case_04",
+                "--ml-models","ESANN",
+                "--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",              
+                "--participants-file", "participants.txt",
+                "--ml-sensors", "hip",              
+                "--case-id-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/output",
 
                 // STEP04: trainer module
                 //"--docker-image", "uniovi-simur-wearablepermed-ml:1.0.0",
                 //"--python-module", "trainer.py",              
-                //"--case-id", "case_sample",
+                //"--case-id", "case_04",
                 //"--case-id-folder", "/home/simur/temp/samples/output",            
                 //"--ml-models","ESANN,RandomForest",
                 //"--dataset-folder", "/home/simur/temp/samples/input",
                 //"--training-percent", "70"
 
                 // STEP05: tester module 
-                "--case-id", "case_06",
-                "--case-id-folder", "/home/simur/temp/samples/output",
-                "--model-id", "RandomForest",
-                "--training-percent", "70"                                       
+                //"--case-id", "case_04",
+                //"--case-id-folder", "/home/simur/temp/samples/output",
+                //"--model-id", "RandomForest",
+                //"--training-percent", "70"                                       
             ],            
             "program": "${file}",
             "console": "integratedTerminal"
