@@ -163,6 +163,20 @@ def filter_windowed_files(args):
 
     return files_to_export_ordered
 
+def filter_windowed_mets_files(args):
+    for root, dirs, files in os.walk(args.dataset_folder):
+        for file in files:
+            # get files tokens
+            _, ext = os.path.splitext(file)         
+
+            # get only files for windowed step
+            if "_features.npz" in file or "_REPOSO_" in file or "_TREADMILL_" in file or "_STS_" in file or "_GXT_" in file:
+                files_to_export.append((root, file))
+
+    files_to_export_ordered = sorted(files_to_export)
+
+    return files_to_export_ordered
+
 def execute_container_by_converter(args, input_files):
     client = docker.from_env()
 
@@ -254,6 +268,79 @@ def execute_container_by_windowed(args, input_files):
 
                 if args.make_feature_extractions == True:
                     command.append('--make-feature-extractions')
+
+                # Run the container from volume and command
+                try:
+                    container = client.containers.run(
+                        name = to_ascii(name),
+                        image = args.docker_image,
+                        user = '1000:1000',
+                        command = command,
+                        volumes = volumes,
+                        working_dir = '/app',
+                        detach = True,
+                        stdout = True,
+                        stderr = True,
+                    )
+
+                    # stream logs live
+                    for line in container.logs(stream=True):
+                        _logger.info(line.decode(), end='')
+
+                    # remove the container and volume attached
+                    container.remove(v=True, force=True)
+                except docker.errors.ContainerError as e:
+                    _logger.error("Container failed:", e.stderr.decode())
+                except docker.errors.ImageNotFound:
+                    _logger.error("Image not found.")
+                except Exception as e:
+                    _logger.error("Unexpected error:", str(e))
+
+def execute_container_by_windowed_mets(args, input_files):
+    client = docker.from_env()
+
+    # group input files in participant groups from activity excel and csv input files
+    participants = defaultdict(list)
+
+    for participant, filename in input_files:
+        participants[participant].append(filename)
+
+    # create the container from participant groups
+    for participant_path, files in participants.items():
+        _logger.info('Executing participant: ' + participant_path)
+
+        # Identify the .xlsx file
+        activity_reposo_files = [f for f in files if "_REPOSO_" in f]
+        activity_treadmill_files = [f for f in files if "_TREADMILL_" in f]
+        activity_sts_files = [f for f in files if "_STS_" in f]
+        activity_gxt_files = [f for f in files if "_GXT_" in f]
+
+        npz_files = [f for f in files if f.endswith('features.npz')]
+
+        if len(activity_reposo_files) == 1 and len(activity_treadmill_files) == 1 and len(activity_sts_files) == 1 and len(activity_gxt_files) == 1 and len(npz_files) > 0:
+            for npz_file in npz_files:
+                _logger.info(f"{npz_file}")
+
+                # get name and extension from input csv file
+                name, extension = os.path.splitext(npz_file)
+
+                # Define the container volume mapping
+                volumes = {
+                    participant_path: {
+                        'bind': '/app/data',
+                        'mode': 'rw'
+                    }
+                }
+
+                # Define the container command        
+                command = [
+                    'python', args.python_module,
+                    '--ruta-datos-features', 'data/' + npz_file,
+                    '--ruta-excel-fase-reposo', 'data/' + activity_reposo_files[0],
+                    '--ruta-excel-tapiz-rodante', 'data/' + activity_treadmill_files[0],            
+                    '--ruta-excel-sts', 'data/' + activity_sts_files[0],            
+                    '--ruta-excel-incremental', 'data/' + activity_gxt_files[0],            
+                ]
 
                 # Run the container from volume and command
                 try:
@@ -467,6 +554,12 @@ elif args.python_module == "windowed.py":
 
     _logger.info("Execute Docker Python windowed module ...")
     execute_container_by_windowed(args, input_files) 
+elif args.python_module == "windowing_mets.py":
+    _logger.info("Filtering Mets files ...")
+    input_files = filter_windowed_mets_files(args)
+
+    _logger.info("Execute Docker Python windowed module ...")
+    execute_container_by_windowed_mets(args, input_files)     
 elif args.python_module == "aggregator.py":
     _logger.info("Execute Docker Python aggregator module ...")
     execute_container_by_agregator(args) 
