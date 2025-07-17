@@ -449,15 +449,15 @@ def execute_container_by_agregator(args):
         # Stream logs live
         for line in container.logs(stream=True):
             _logger.info(line.decode(), end='')
+
+        # remove the container and volume attached
+        container.remove(v=True, force=True)            
     except docker.errors.ContainerError as e:
         _logger.error("Container failed:", e.stderr.decode())
     except docker.errors.ImageNotFound:
         _logger.error("Image not found.")
     except Exception as e:
         _logger.error("Unexpected error:", str(e))
-    finally:
-        # remove the container and volume attached                
-        container.remove(v=True, force=True)
 
 def execute_container_by_trainer(args):
     client = docker.from_env()
