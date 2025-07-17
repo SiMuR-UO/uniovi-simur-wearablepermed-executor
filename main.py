@@ -5,6 +5,7 @@ import logging
 from enum import Enum
 from collections import defaultdict
 import unicodedata
+import pandas as pd
 import docker
 
 __author__ = "Miguel Angel Salinas Gancedo"
@@ -92,6 +93,12 @@ def parse_args(args):
         dest="participants_file",
         help="Choose the dataset participant text file"
     )
+    parser.add_argument(
+        "-csv-participants-not-time-off-file",
+        "--csv-participants-not-time-off-file",
+        dest="csv_participants_not_time_off_file",
+        help="csv Participants not time off file"
+    )    
     parser.add_argument(
         "-case-id-folder",
         "--case-id-folder",
@@ -225,6 +232,11 @@ def execute_container_by_converter(args, input_files):
             _logger.error("Unexpected error:", str(e))
 
 def execute_container_by_windowed(args, input_files):
+    # load the csv not time off file to detect imcompleted participants        
+    csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "participants_not_time_off.csv")
+
+    df_participants_not_time_off = pd.read_csv(csv_path, dtype=str)
+
     client = docker.from_env()
 
     # group input files in participant groups from activity excel and csv input files
@@ -250,6 +262,11 @@ def execute_container_by_windowed(args, input_files):
                 # get name and extension from input csv file
                 name, extension = os.path.splitext(csv_file)
 
+                # check if the participant has not time off issue                
+                participant_code = name.split('_')[0]
+                participant_id = participant_code[3:]
+                sensor_id = name.split('_')[2]
+
                 # Define the container volume mapping
                 volumes = {
                     participant_path: {
@@ -263,11 +280,22 @@ def execute_container_by_windowed(args, input_files):
                     'python', args.python_module,
                     '--csv-matrix-PMP', 'data/' + csv_file,
                     '--activity-PMP', 'data/' + activity_file,
-                    '--export-folder-name', 'data/' + name + '.npz',            
+                    #'--export-folder-name', 'data/' + name + '.npz',
+                    '--export-folder-name', 'data/' + 'data_' + participant_id + '_tot_' + sensor_id + '.npz',
                 ]
 
                 if args.make_feature_extractions == True:
                     command.append('--make-feature-extractions')
+
+                participant_not_time_off = df_participants_not_time_off[(df_participants_not_time_off.iloc[:, 0] == participant_code) & (df_participants_not_time_off.iloc[:, 1] == sensor_id)]
+
+                if not participant_not_time_off.empty:
+                    command.append('--has-timeoff')
+                    command.append('False')
+                    command.append('--calibrate-with-start-WALKING-USUAL-SPEED')
+                    command.append(participant_not_time_off.iloc[0]['sample'])
+                    command.append('--start-time-WALKING-USUAL-SPEED')
+                    command.append(participant_not_time_off.iloc[0]['time'])
 
                 # Run the container from volume and command
                 try:

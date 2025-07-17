@@ -15,15 +15,21 @@
                 //"--dataset-folder", "/home/simur/temp/samples/input",
 
                 // STEP02: windowed module
-                //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
-                //"--python-module", "windowed.py",
-                //"--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
-                //"--make-feature-extractions",
-              
-                // STEP03: windowed mets module
-                "--docker-image", "uniovi-simur-wearablepermed-mets:1.0.0",
-                "--python-module", "windowing_mets.py",
+                "--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",
+                "--python-module", "windowed.py",
                 "--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
+                "--csv-participants-not-time-off-file", "./participants_not_time_off.csv",
+                "--make-feature-extractions",
+              
+                // STEP03: windowed mets module 
+                //"--docker-image", "uniovi-simur-wearablepermed-mets:1.0.0",
+                //"--python-module", "windowing_mets.py",
+                //"--dataset-folder", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
+
+                // STEP03: agregator mets module
+                //"--ruta-carpeta-PMPs", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/input",
+                //"--ruta-carpeta-destino", "/mnt/nvme1n2/git/uniovi-simur-wearablepermed-data/ouput",
+                //"--id-caso", "case_mets_01",
 
                 // STEP04: aggregator module
                 //"--docker-image", "uniovi-simur-wearablepermed-hmc:1.0.0",

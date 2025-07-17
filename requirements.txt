@@ -3,7 +3,12 @@ charset-normalizer==3.4.2
 docker==7.1.0
 docker-pycreds==0.4.0
 idna==3.10
+numpy==2.3.1
+pandas==2.3.1
+python-dateutil==2.9.0.post0
+pytz==2025.2
 requests==2.32.3
 six==1.17.0
+tzdata==2025.2
 urllib3==2.4.0
 websocket-client==1.8.0
